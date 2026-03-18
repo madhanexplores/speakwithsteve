@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Matches Auth UID)
+    // Fields:
+    //   - uid: string (required) - The user's unique ID.
+    //   - displayName: string (optional) - User's display name.
+    //   - email: string (optional) - User's email address.
+    //   - xp: number (required) - Total experience points.
+    //   - level: string (required) - Current proficiency level.
+    //   - streak: number (optional) - Current daily streak.
+    //   - speakingTime: number (optional) - Total speaking time in minutes.
+    //   - wordsLearned: number (optional) - Total words learned.
+    //   - lastActive: timestamp (optional) - Last activity timestamp.
+    //   - explanationLanguage: string (optional, enum: ["English", "Tamil"]) - Preferred language for explanations.
+    //
+    // Collection: users/{userId}/messages
+    // Document ID: auto-generated
+    // Fields:
+    //   - text: string (required) - The message content.
+    //   - role: string (required, enum: ["user", "steve"]) - Who sent the message.
+    //   - timestamp: timestamp (required) - When the message was sent.
+    //
+    // Collection: users/{userId}/pronunciationAttempts
+    // Document ID: auto-generated
+    // Fields:
+    //   - targetText: string (required) - The sentence the user was supposed to say.
+    //   - spokenText: string (required) - What the user actually said.
+    //   - score: number (required) - Accuracy score (0-100).
+    //   - fluency: number (optional) - Fluency score (0-100).
+    //   - confidence: number (optional) - Confidence score (0-100).
+    //   - timestamp: timestamp (required) - When the attempt occurred.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (
+            'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+          ) ||
+          (request.auth.token.email == "madhankumar18072007@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'displayName', 'email', 'xp', 'level', 'streak', 'speakingTime', 'wordsLearned', 'lastActive', 'role', 'explanationLanguage']) &&
+             data.uid == request.auth.uid &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is string && data.level.size() > 0 && data.level.size() < 50 &&
+             (!('role' in data) || (data.role is string && data.role.size() < 20)) &&
+             (!('displayName' in data) || (data.displayName == null || (data.displayName is string && data.displayName.size() < 100))) &&
+             (!('email' in data) || (data.email == null || isValidEmail(data.email))) &&
+             (!('streak' in data) || (data.streak is number && data.streak >= 0)) &&
+             (!('speakingTime' in data) || (data.speakingTime is number && data.speakingTime >= 0)) &&
+             (!('wordsLearned' in data) || (data.wordsLearned is number && data.wordsLearned >= 0)) &&
+             (!('lastActive' in data) || (data.lastActive == null || data.lastActive is timestamp)) &&
+             (!('explanationLanguage' in data) || (data.explanationLanguage in ['English', 'Tamil']));
+    }
+
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['text', 'role', 'timestamp']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.role in ['user', 'steve'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidPronunciationAttempt(data) {
+      return hasOnlyAllowedFields(['targetText', 'spokenText', 'score', 'fluency', 'confidence', 'timestamp']) &&
+             data.targetText is string && data.targetText.size() > 0 && data.targetText.size() < 1000 &&
+             data.spokenText is string && data.spokenText.size() >= 0 && data.spokenText.size() < 1000 &&
+             data.score is number && data.score >= 0 && data.score <= 100 &&
+             (!('fluency' in data) || (data.fluency is number && data.fluency >= 0 && data.fluency <= 100)) &&
+             (!('confidence' in data) || (data.confidence is number && data.confidence >= 0 && data.confidence <= 100)) &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if (
+        isOwner(userId) && 
+        isValidUser(request.resource.data) && 
+        (
+          !('role' in resource.data) || 
+          !('role' in request.resource.data) ||
+          request.resource.data.role == resource.data.role || 
+          isAdmin()
+        )
+      ) || isAdmin();
+      
+      match /messages/{messageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+      }
+
+      match /pronunciationAttempts/{attemptId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidPronunciationAttempt(request.resource.data);
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

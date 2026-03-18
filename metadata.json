@@ -1,0 +1,5 @@
+{
+  "name": "SpeakWithSteve",
+  "description": "Your AI-powered English speaking partner. Practice conversations, improve pronunciation, and fix grammar with Steve.",
+  "requestFramePermissions": ["microphone"]
+}

@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Stores user progress and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "description": "User's email address." },
+        "xp": { "type": "integer", "description": "Total experience points." },
+        "level": { "type": "string", "description": "Current proficiency level." },
+        "streak": { "type": "integer", "description": "Current daily streak." },
+        "speakingTime": { "type": "number", "description": "Total speaking time in minutes." },
+        "wordsLearned": { "type": "integer", "description": "Total words learned." },
+        "lastActive": { "type": "string", "format": "date-time", "description": "Last activity timestamp." },
+        "explanationLanguage": { "type": "string", "enum": ["English", "Tamil"], "description": "Preferred language for explanations." }
+      },
+      "required": ["uid", "xp", "level"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message in a chat session.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The message content." },
+        "role": { "type": "string", "enum": ["user", "steve"], "description": "Who sent the message." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." }
+      },
+      "required": ["text", "role", "timestamp"]
+    },
+    "PronunciationAttempt": {
+      "title": "PronunciationAttempt",
+      "description": "A record of a pronunciation practice attempt.",
+      "type": "object",
+      "properties": {
+        "targetText": { "type": "string", "description": "The sentence the user was supposed to say." },
+        "spokenText": { "type": "string", "description": "What the user actually said." },
+        "score": { "type": "integer", "description": "Accuracy score (0-100)." },
+        "fluency": { "type": "integer", "description": "Fluency score (0-100)." },
+        "confidence": { "type": "integer", "description": "Confidence score (0-100)." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the attempt occurred." }
+      },
+      "required": ["targetText", "spokenText", "score", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and progress."
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat history for a specific user."
+    },
+    "/users/{userId}/pronunciationAttempts/{attemptId}": {
+      "schema": "PronunciationAttempt",
+      "description": "Pronunciation practice history."
+    }
+  }
+}
