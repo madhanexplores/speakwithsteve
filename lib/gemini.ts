@@ -26,43 +26,8 @@ Explanation: "go" என்பதன் கடந்த காலம் "went" �
 Anyway, that sounds like a fun trip! What did you buy at the market?
 `;
 
-export async function getSteveResponse(message: string, history: { role: "user" | "model", parts: { text: string }[] }[], language: 'English' | 'Tamil' = 'English') {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY is not set");
-    return "I'm having trouble connecting to my brain right now. Please check the API key configuration.";
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction: getSteveSystemPrompt(language),
-      },
-      contents: [
-        ...history.map(h => ({
-          role: h.role === "model" ? "model" : "user",
-          parts: h.parts
-        })),
-        { role: "user", parts: [{ text: message }] }
-      ],
-    });
-
-    return response.text;
-  } catch (error: any) {
-    console.error("Error getting Steve's response:", error);
-    
-    // Handle specific 404 error by trying a fallback model if needed
-    if (error.message?.includes("404") || error.status === "NOT_FOUND") {
-       return "I'm sorry, I'm having trouble finding the right AI model to talk to you. Please contact support.";
-    }
-
-    return "Oops! I had a little glitch. Can you say that again?";
-  }
-}
+// getSteveResponse has been moved to a server action in app/actions/ai.ts
+// to keep the API key secure and avoid CORS issues.
 
 export async function getSteveSpeech(text: string): Promise<{ data: string, mimeType: string } | null> {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;

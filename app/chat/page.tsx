@@ -5,7 +5,8 @@ import Navbar from '@/components/Navbar';
 import SteveMascot from '@/components/SteveMascot';
 import { Send, Mic, MicOff, RotateCcw, User, Bot, Sparkles, LogIn, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getSteveResponse, getSteveSpeech } from '@/lib/gemini';
+import { getSteveSpeech } from '@/lib/gemini';
+import { getSteveResponseAction } from '@/app/actions/ai';
 import { playSteveAudio, speakText } from '@/lib/audio';
 import { useProgress } from '@/hooks/useProgress';
 import { useAuth } from '@/components/FirebaseProvider';
@@ -144,7 +145,7 @@ export default function ChatPage() {
         parts: [{ text: msg.text }]
       }));
 
-      const steveReply = await getSteveResponse(text, history, progress.explanationLanguage);
+      const steveReply = await getSteveResponseAction(text, history, progress.explanationLanguage);
       setIsTyping(false);
 
       const replyText = steveReply || "I'm sorry, I didn't catch that.";
